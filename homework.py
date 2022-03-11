@@ -116,7 +116,7 @@ def main():
         sys.exit()
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    current_timestamp = 1645729200  # int(time.time())
+    current_timestamp = int(time.time())
 
     while True:
         try:
