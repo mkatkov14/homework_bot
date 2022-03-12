@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import time
+import json
 from http import HTTPStatus
 
 import requests
@@ -43,8 +44,8 @@ def send_message(bot: telegram.Bot, message: str) -> None:
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.info(f'Отправлено сообщение: {message}')
-    except Exception:
-        logger.exception('Не удалось отправить сообщение.')
+    except telegram.TelegramError:
+        logger.error('Не удалось отправить сообщение.')
 
 
 def get_api_answer(current_timestamp: int) -> dict:
@@ -58,7 +59,10 @@ def get_api_answer(current_timestamp: int) -> dict:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
         status = response.status_code
         if status == HTTPStatus.OK:
-            return response.json()
+            try:
+                return response.json()
+            except json.decoder.JSONDecodeError:
+                logger.error('ошибка преобразования к типам данных Python')
         else:
             logger.error(
                 f'Недоступность эндпоинта {ENDPOINT}. Код ответа API: {status}'
@@ -95,10 +99,17 @@ def parse_status(homework: dict) -> str:
     отправки в Telegram строку, содержащую один из вердиктов словаря
     HOMEWORK_STATUSES.
     """
-    homework_name = homework.get('homework_name')
-    homework_status = homework.get('status')
-    verdict = HOMEWORK_STATUSES[homework_status]
-    return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    if homework:
+        homework_name = homework.get('homework_name')
+        homework_status = homework.get('status')
+        if homework_status not in HOMEWORK_STATUSES:
+            logger.error(f'Неизвестный статус: {homework_status}')
+            raise KeyError
+        verdict = HOMEWORK_STATUSES[homework_status]
+        return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    else:
+        logger.error('Пустой словарь')
+        raise KeyError
 
 
 def check_tokens() -> bool:
@@ -111,7 +122,7 @@ def check_tokens() -> bool:
 
 def main():
     """Основная логика работы бота."""
-    if check_tokens() is False:
+    if not check_tokens():
         logger.critical('Отсутствует переменная окружения')
         sys.exit()
 
