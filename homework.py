@@ -81,7 +81,10 @@ def check_response(response: dict) -> list:
         logger.error('Ответ API не является словарем.')
         raise TypeError
 
-    if response.keys() == {'homeworks', 'current_date'}:
+    if ('current_date' in response) and ('homeworks' in response):
+        # if response.keys() == {'homeworks', 'current_date'}:
+        # если ключи будут в другом порядке, проверка так же отрабатывает.
+        # проверял так: if response.keys() == {'current_date', 'homeworks'}:
         if type(response['homeworks']) is not list:
             logger.error('Ответ API не соответствует.')
             raise TypeError
@@ -101,6 +104,9 @@ def parse_status(homework: dict) -> str:
     """
     if homework:
         homework_name = homework.get('homework_name')
+        if not homework_name:
+            logger.error(f'отсутствует или пустое поле: {homework_name}')
+            raise KeyError
         homework_status = homework.get('status')
         if homework_status not in HOMEWORK_STATUSES:
             logger.error(f'Неизвестный статус: {homework_status}')
